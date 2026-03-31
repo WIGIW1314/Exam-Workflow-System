@@ -1,0 +1,23 @@
+{
+  "name": "exam-workflow-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Exam workflow management system monorepo",
+  "scripts": {
+    "dev": "corepack pnpm -r --parallel --filter @exam-workflow/shared --filter @exam-workflow/server --filter @exam-workflow/client dev",
+    "build": "corepack pnpm -r build",
+    "type-check": "corepack pnpm -r type-check",
+    "db:generate": "corepack pnpm --filter @exam-workflow/server prisma:generate",
+    "db:migrate": "corepack pnpm --filter @exam-workflow/server prisma:migrate",
+    "db:seed": "corepack pnpm --filter @exam-workflow/server prisma:seed",
+    "git:quick": "powershell -ExecutionPolicy Bypass -File ./scripts/git-quick-commit.ps1",
+    "deploy:bt": "bash ./scripts/bt-deploy.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

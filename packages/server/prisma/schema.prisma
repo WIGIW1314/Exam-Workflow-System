@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String               @id @default(cuid())
+  username         String               @unique
+  password         String
+  realName         String
+  email            String?
+  phone            String?
+  departmentId     String?
+  avatar           String?
+  status           Boolean              @default(true)
+  lastLoginAt      DateTime?
+  lastLoginIp      String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  department       Department?          @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  roles            UserRole[]
+  courses          Course[]             @relation("CourseTeacher")
+  submittedPapers  ExamPaper[]          @relation("PaperTeacher")
+  reviewedPapers   ExamPaper[]          @relation("PaperReviewer")
+  sessions         Session[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  directedDepartment Department?        @relation("DepartmentDirector")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  name        String
+  description String?
+  sortOrder   Int              @default(0)
+  status      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  name        String
+  module      String
+  description String?
+  createdAt   DateTime         @default(now())
+  roles       RolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model Semester {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  code        String       @unique
+  startDate   DateTime
+  endDate     DateTime
+  isCurrent   Boolean      @default(false)
+  status      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  courses     Course[]
+  papers      ExamPaper[]
+  numberRule  NumberRule?
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  directorId  String?  @unique
+  sortOrder   Int      @default(0)
+  status      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  director    User?    @relation("DepartmentDirector", fields: [directorId], references: [id])
+  members     User[]   @relation("DepartmentMembers")
+  courses     Course[]
+  papers      ExamPaper[]
+}
+
+model Course {
+  id           String        @id @default(cuid())
+  semesterId   String
+  courseCode   String
+  courseName   String
+  teacherId    String
+  departmentId String
+  creditHours  Float?
+  courseType   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  semester     Semester      @relation(fields: [semesterId], references: [id])
+  teacher      User          @relation("CourseTeacher", fields: [teacherId], references: [id])
+  department   Department    @relation(fields: [departmentId], references: [id])
+  classes      CourseClass[]
+  papers       ExamPaper[]
+
+  @@unique([semesterId, courseCode, teacherId])
+}
+
+model CourseClass {
+  id        String            @id @default(cuid())
+  courseId  String
+  className String
+  createdAt DateTime          @default(now())
+  course    Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  papers    PaperClassGroup[]
+}
+
+model ExamPaper {
+  id               String            @id @default(cuid())
+  courseId          String
+  teacherId         String
+  semesterId        String
+  departmentId      String
+  version           Int               @default(1)
+  originalFileName  String
+  originalFilePath  String
+  approvedFilePath  String?
+  previewHtml       String?
+  fileHash          String?
+  paperNumber       String?           @unique
+  status            String            @default("pending")
+  rejectReason      String?
+  reviewerId        String?
+  approvalNote      String?
+  reviewedAt        DateTime?
+  submittedAt       DateTime          @default(now())
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  course            Course            @relation(fields: [courseId], references: [id])
+  teacher           User              @relation("PaperTeacher", fields: [teacherId], references: [id])
+  semester          Semester          @relation(fields: [semesterId], references: [id])
+  department        Department        @relation(fields: [departmentId], references: [id])
+  reviewer          User?             @relation("PaperReviewer", fields: [reviewerId], references: [id])
+  classGroups       PaperClassGroup[]
+
+  @@index([status, semesterId, departmentId])
+}
+
+model PaperClassGroup {
+  paperId       String
+  courseClassId String
+  paper         ExamPaper   @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  courseClass   CourseClass @relation(fields: [courseClassId], references: [id], onDelete: Cascade)
+
+  @@id([paperId, courseClassId])
+}
+
+model NumberRule {
+  id          String   @id @default(cuid())
+  semesterId  String   @unique
+  prefix      String   @default("SJ")
+  separator   String   @default("-")
+  dateFormat  String   @default("YYYYMM")
+  seqLength   Int      @default(4)
+  currentSeq  Int      @default(0)
+  example     String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  semester    Semester @relation(fields: [semesterId], references: [id])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  socketId     String?
+  currentRole  String
+  ipAddress    String?
+  userAgent    String?
+  isOnline     Boolean  @default(true)
+  lastActiveAt DateTime @default(now())
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  userName   String
+  action     String
+  module     String
+  target     String?
+  detail     String
+  ipAddress  String?
+  userAgent  String?
+  statusCode Int?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model SystemConfig {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
