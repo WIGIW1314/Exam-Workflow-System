@@ -15,7 +15,7 @@ module.exports = {
       watch: false,
       env: {
         NODE_ENV: 'production',
-        PORT: process.env.PORT || '3000',
+        PORT: process.env.PORT || '3200',
       },
       out_file: path.join(appRoot, 'logs', 'server.out.log'),
       error_file: path.join(appRoot, 'logs', 'server.error.log'),

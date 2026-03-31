@@ -94,7 +94,7 @@ corepack pnpm dev
 启动后默认地址：
 
 - 前端：`http://localhost:5173`
-- 后端：`http://localhost:3000`
+- 后端：`http://localhost:3200`
 
 ### 5.4 构建生产版本
 

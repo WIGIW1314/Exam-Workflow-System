@@ -48,7 +48,7 @@ RUN_SEED=true bash scripts/bt-deploy.sh
 - `WEB_ROOT`: 前端静态资源目录，默认 `/www/wwwroot/exam-workflow-system-web`
 - `REPO_URL`: Git 仓库地址
 - `BRANCH`: 部署分支，默认 `main`
-- `PORT`: 后端端口，默认 `3000`
+- `PORT`: 后端端口，默认 `3200`
 - `DOMAIN`: 域名，默认 `_`
 - `CORS_ORIGIN`: 前端访问地址，默认 `http://<DOMAIN>`
 - `RUN_SEED`: 是否执行种子数据，默认 `false`
