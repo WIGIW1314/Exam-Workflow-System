@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { UploadFilled } from '@element-plus/icons-vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import PageCard from '@/components/common/PageCard.vue';
 import StatusTag from '@/components/common/StatusTag.vue';
 import { apiGet } from '@/api';
 import { http } from '@/api/http';
+import { useAuthStore } from '@/stores/auth';
 
+const authStore = useAuthStore();
 const courses = ref<any[]>([]);
 const papers = ref<any[]>([]);
 const currentCourseId = ref('');
@@ -14,6 +16,8 @@ const selectedClassIds = ref<string[]>([]);
 const uploadRef = ref();
 const previewHtml = ref('');
 const previewVisible = ref(false);
+const page = ref(1);
+const pageSize = ref(10);
 
 async function loadData() {
   const [courseData, paperData] = await Promise.all([apiGet<any[]>('/courses/my'), apiGet<any[]>('/papers/my')]);
@@ -29,6 +33,10 @@ function handleCourseChange() {
 }
 
 const currentCourse = computed(() => courses.value.find((item) => item.id === currentCourseId.value));
+const pagedPapers = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return papers.value.slice(start, start + pageSize.value);
+});
 
 async function submitUpload(file: File) {
   if (!currentCourseId.value) {
@@ -58,12 +66,23 @@ function downloadPaper(id: string) {
   window.open(`/api/v1/papers/${id}/download`, '_blank');
 }
 
+function handlePageChange(nextPage: number) {
+  page.value = nextPage;
+}
+
 onMounted(loadData);
+
+watch(
+  () => [authStore.paperSubmissionVersion, authStore.paperStatusVersion],
+  () => {
+    void loadData();
+  },
+);
 </script>
 
 <template>
   <div class="split-grid">
-    <PageCard title="试卷提交" eyebrow="Upload">
+    <PageCard fill show-title title="试卷提交" eyebrow="提交入口">
       <el-form label-position="top">
         <el-form-item label="课程">
           <el-select v-model="currentCourseId" style="width: 100%" @change="handleCourseChange">
@@ -87,25 +106,38 @@ onMounted(loadData);
       </el-form>
     </PageCard>
 
-    <PageCard title="已提交试卷" eyebrow="History">
-      <el-table :data="papers">
-        <el-table-column prop="courseName" label="课程" />
-        <el-table-column prop="version" label="版本" width="80" />
-        <el-table-column label="状态" width="110">
-          <template #default="{ row }"><StatusTag :status="row.status" /></template>
-        </el-table-column>
-        <el-table-column prop="paperNumber" label="试卷编号" width="180" />
-        <el-table-column label="操作" width="220">
-          <template #default="{ row }">
-            <el-button link @click="showPreview(row.id)">预览</el-button>
-            <el-button link :disabled="row.status !== 'approved'" @click="downloadPaper(row.id)">下载</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    <PageCard fill show-title title="已提交试卷" eyebrow="提交记录">
+      <div class="page-table">
+      <el-table border :data="pagedPapers">
+          <el-table-column prop="courseName" label="课程" />
+          <el-table-column prop="version" label="版本" width="80" />
+          <el-table-column label="状态" width="110">
+            <template #default="{ row }"><StatusTag :status="row.status" /></template>
+          </el-table-column>
+          <el-table-column prop="paperNumber" label="试卷编号" width="180" />
+          <el-table-column label="操作" width="220">
+            <template #default="{ row }">
+              <el-button link @click="showPreview(row.id)">预览</el-button>
+              <el-button link :disabled="row.status !== 'approved'" @click="downloadPaper(row.id)">下载</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div class="page-pagination">
+        <el-pagination
+          background
+          layout="total, prev, pager, next"
+          :current-page="page"
+          :page-size="pageSize"
+          :total="papers.length"
+          @current-change="handlePageChange"
+        />
+      </div>
     </PageCard>
   </div>
 
-  <el-drawer v-model="previewVisible" title="试卷预览" size="55%">
+  <el-drawer v-model="previewVisible" append-to-body title="试卷预览" size="55%">
     <div class="preview-pane" v-html="previewHtml" />
   </el-drawer>
 </template>

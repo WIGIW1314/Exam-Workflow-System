@@ -17,7 +17,7 @@
 - 主任端：待审试卷列表、在线预览、通过/驳回、教研室数据总览
 - 工作流能力：试卷版本递增、审核通过后自动生成编号、DOCX 注入编号
 - 实时能力：在线状态、通知中心、试卷状态实时推送
-- 数据能力：课程导入、试卷导出、审计日志导出
+- 数据能力：用户、学期、教研室、课程、审计日志支持模板下载、批量导入、批量删除、分页导出
 - 运维能力：SQLite 自动备份任务、PM2 启动配置、宝塔一键部署脚本
 
 ## 2. 试卷编号规则
@@ -162,7 +162,6 @@ corepack pnpm deploy:bt
 - `/admin/semesters`
 - `/admin/departments`
 - `/admin/courses`
-- `/admin/workflow`
 - `/admin/papers`
 - `/admin/audit-logs`
 - `/admin/settings`

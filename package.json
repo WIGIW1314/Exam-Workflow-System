@@ -4,7 +4,7 @@
   "private": true,
   "description": "Exam workflow management system monorepo",
   "scripts": {
-    "dev": "corepack pnpm -r --parallel --filter @exam-workflow/shared --filter @exam-workflow/server --filter @exam-workflow/client dev",
+    "dev": "concurrently -k -n shared,server,client -c cyan,green,blue \"corepack pnpm --filter @exam-workflow/shared dev\" \"corepack pnpm --filter @exam-workflow/server dev\" \"corepack pnpm exec wait-on tcp:3200 && corepack pnpm --filter @exam-workflow/client dev\"",
     "build": "corepack pnpm -r build",
     "type-check": "corepack pnpm -r type-check",
     "db:generate": "corepack pnpm --filter @exam-workflow/server prisma:generate",
@@ -18,6 +18,7 @@
   },
   "packageManager": "pnpm@10.33.0",
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "wait-on": "^8.0.5"
   }
 }

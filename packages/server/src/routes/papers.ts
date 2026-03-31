@@ -96,13 +96,17 @@ router.post('/submit', requireRole('teacher'), ...uploadDocx, async (req, res, n
       });
     }
     try {
-      getIo().to(`department:${paper.departmentId}`).emit('paper:new-submission', {
+      const payload = {
         paperId: paper.id,
         status: paper.status,
         courseName: paper.course.courseName,
         teacherName: paper.teacher.realName,
         message: '有新的试卷待审核',
-      });
+      };
+      const io = getIo();
+      io.to(`department:${paper.departmentId}`).emit('paper:new-submission', payload);
+      io.to('role:admin').emit('paper:new-submission', payload);
+      io.to(`user:${paper.teacherId}`).emit('paper:new-submission', payload);
     } catch {
       // ignore before socket ready
     }
@@ -279,13 +283,17 @@ router.post('/:id/approve', requireRole('director'), async (req, res, next) => {
     });
 
     try {
-      getIo().to(`user:${updated.teacherId}`).emit('paper:status-changed', {
+      const payload = {
         paperId: updated.id,
         status: updated.status,
         courseName: updated.course.courseName,
         teacherName: updated.teacher.realName,
         message: '试卷审核已通过',
-      });
+      };
+      const io = getIo();
+      io.to(`user:${updated.teacherId}`).emit('paper:status-changed', payload);
+      io.to(`department:${updated.departmentId}`).emit('paper:status-changed', payload);
+      io.to('role:admin').emit('paper:status-changed', payload);
     } catch {
       // ignore
     }
@@ -347,13 +355,17 @@ router.post('/:id/reject', requireRole('director'), async (req, res, next) => {
       content: `${updated.course.courseName} 试卷被驳回，原因：${rejectReason}`,
     });
     try {
-      getIo().to(`user:${updated.teacherId}`).emit('paper:status-changed', {
+      const payload = {
         paperId: updated.id,
         status: updated.status,
         courseName: updated.course.courseName,
         teacherName: updated.teacher.realName,
         message: '试卷审核被驳回',
-      });
+      };
+      const io = getIo();
+      io.to(`user:${updated.teacherId}`).emit('paper:status-changed', payload);
+      io.to(`department:${updated.departmentId}`).emit('paper:status-changed', payload);
+      io.to('role:admin').emit('paper:status-changed', payload);
     } catch {
       // ignore
     }

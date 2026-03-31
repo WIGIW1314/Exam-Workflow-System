@@ -1,21 +1,52 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { io, type Socket } from 'socket.io-client';
-import type { AuthProfile, NotificationSummary } from '@exam-workflow/shared';
+import type {
+  AuthProfile,
+  ClientToServerEvents,
+  NotificationSummary,
+  OnlineUser,
+  ServerToClientEvents,
+} from '@exam-workflow/shared';
 import { apiGet, apiPost, apiPut } from '@/api';
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('exam-workflow-token') ?? '');
   const profile = ref<AuthProfile | null>(null);
   const notifications = ref<NotificationSummary[]>([]);
-  const socket = ref<Socket | null>(null);
+  const socket = ref<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
   const loading = ref(false);
+  const bootstrapped = ref(false);
+  const onlineVersion = ref(0);
+  const paperSubmissionVersion = ref(0);
+  const paperStatusVersion = ref(0);
+  const onlineSnapshot = ref<{ onlineUsers: OnlineUser[]; count: number } | null>(null);
+  let bootstrapPromise: Promise<void> | null = null;
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   const isLoggedIn = computed(() => Boolean(token.value));
   const currentRole = computed(() => profile.value?.currentRole ?? 'teacher');
   const user = computed(() => profile.value?.user ?? null);
   const availableRoles = computed(() => profile.value?.availableRoles ?? []);
   const unreadCount = computed(() => notifications.value.filter((item) => !item.isRead).length);
+
+  function stopHeartbeat() {
+    if (!heartbeatTimer) {
+      return;
+    }
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+
+  function startHeartbeat(client: Socket<ServerToClientEvents, ClientToServerEvents>) {
+    stopHeartbeat();
+    heartbeatTimer = setInterval(() => {
+      if (!client.connected) {
+        return;
+      }
+      client.emit('heartbeat', () => undefined);
+    }, 30000);
+  }
 
   function persistToken(nextToken: string) {
     token.value = nextToken;
@@ -31,11 +62,31 @@ export const useAuthStore = defineStore('auth', () => {
     if (socket.value) {
       socket.value.disconnect();
     }
+    stopHeartbeat();
     const client = io('/', {
       autoConnect: true,
+      path: '/socket.io',
+      timeout: 5000,
+      reconnectionAttempts: 8,
+      reconnectionDelay: 1500,
       auth: {
         token: token.value,
       },
+    });
+    client.on('connect', () => {
+      startHeartbeat(client);
+    });
+    client.on('disconnect', () => {
+      if (socket.value === client) {
+        stopHeartbeat();
+      }
+    });
+    client.on('online:update', (payload) => {
+      onlineSnapshot.value = payload;
+      onlineVersion.value += 1;
+    });
+    client.on('paper:new-submission', () => {
+      paperSubmissionVersion.value += 1;
     });
     client.on('notification:new', async () => {
       await fetchNotifications();
@@ -44,6 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
       logout(true);
     });
     client.on('paper:status-changed', async () => {
+      paperStatusVersion.value += 1;
       await fetchNotifications();
     });
     socket.value = client;
@@ -55,22 +107,34 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function bootstrap() {
-    if (!token.value) return;
-    loading.value = true;
-    try {
-      const data = await apiGet<Omit<AuthProfile, 'token'>>('/auth/profile');
-      profile.value = {
-        ...data,
-        token: token.value,
-      };
-      await fetchNotifications();
-      connectSocket();
-    } catch {
-      persistToken('');
-      profile.value = null;
-    } finally {
-      loading.value = false;
+    if (bootstrapPromise) {
+      return bootstrapPromise;
     }
+    bootstrapPromise = (async () => {
+      if (!token.value) {
+        bootstrapped.value = true;
+        bootstrapPromise = null;
+        return;
+      }
+      loading.value = true;
+      try {
+        const data = await apiGet<Omit<AuthProfile, 'token'>>('/auth/profile');
+        profile.value = {
+          ...data,
+          token: token.value,
+        };
+        await fetchNotifications();
+        connectSocket();
+      } catch {
+        persistToken('');
+        profile.value = null;
+      } finally {
+        loading.value = false;
+        bootstrapped.value = true;
+        bootstrapPromise = null;
+      }
+    })();
+    return bootstrapPromise;
   }
 
   async function login(payload: { username: string; password: string }) {
@@ -85,11 +149,13 @@ export const useAuthStore = defineStore('auth', () => {
     if (!isForced && token.value) {
       await apiPost('/auth/logout');
     }
+    stopHeartbeat();
     socket.value?.disconnect();
     socket.value = null;
     persistToken('');
     profile.value = null;
     notifications.value = [];
+    onlineSnapshot.value = null;
   }
 
   async function switchRole(roleCode: string) {
@@ -123,7 +189,12 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     currentRole,
     availableRoles,
+    onlineVersion,
+    onlineSnapshot,
+    paperSubmissionVersion,
+    paperStatusVersion,
     loading,
+    bootstrapped,
     bootstrap,
     login,
     logout,

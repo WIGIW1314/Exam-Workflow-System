@@ -1,6 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
+const fallbackMap: Record<string, string> = {
+  admin: '/admin/dashboard',
+  director: '/director/dashboard',
+  teacher: '/teacher/courses',
+};
+
+const rolePrefixMap: Record<string, string> = {
+  admin: '/admin/',
+  director: '/director/',
+  teacher: '/teacher/',
+};
+
 const routes = [
   {
     path: '/login',
@@ -18,17 +30,17 @@ const routes = [
       { path: 'admin/semesters', component: () => import('@/views/admin/AdminSemestersView.vue'), meta: { roles: ['admin'], title: '学期管理' } },
       { path: 'admin/departments', component: () => import('@/views/admin/AdminDepartmentsView.vue'), meta: { roles: ['admin'], title: '教研室管理' } },
       { path: 'admin/courses', component: () => import('@/views/admin/AdminCoursesView.vue'), meta: { roles: ['admin'], title: '课程管理' } },
-      { path: 'admin/workflow', component: () => import('@/views/admin/AdminWorkflowView.vue'), meta: { roles: ['admin'], title: '流程设计' } },
       { path: 'admin/papers', component: () => import('@/views/admin/AdminPapersView.vue'), meta: { roles: ['admin'], title: '试卷总览' } },
       { path: 'admin/audit-logs', component: () => import('@/views/admin/AdminAuditLogsView.vue'), meta: { roles: ['admin'], title: '审计日志' } },
       { path: 'admin/settings', component: () => import('@/views/admin/AdminSettingsView.vue'), meta: { roles: ['admin'], title: '系统设置' } },
+      { path: 'admin/profile', component: () => import('@/views/admin/AdminProfileView.vue'), meta: { roles: ['admin'], title: '个人中心' } },
       { path: 'teacher/courses', component: () => import('@/views/teacher/TeacherCoursesView.vue'), meta: { roles: ['teacher'], title: '我的课程' } },
       { path: 'teacher/papers', component: () => import('@/views/teacher/TeacherPapersView.vue'), meta: { roles: ['teacher'], title: '试卷提交' } },
-      { path: 'teacher/profile', component: () => import('@/views/teacher/TeacherProfileView.vue'), meta: { roles: ['teacher'], title: '个人信息' } },
-      { path: 'director/dashboard', component: () => import('@/views/director/DirectorDashboardView.vue'), meta: { roles: ['director'], title: '主任工作台' } },
+      { path: 'teacher/profile', component: () => import('@/views/teacher/TeacherProfileView.vue'), meta: { roles: ['teacher'], title: '个人中心' } },
+      { path: 'director/dashboard', component: () => import('@/views/director/DirectorDashboardView.vue'), meta: { roles: ['director'], title: '工作台' } },
       { path: 'director/reviews', component: () => import('@/views/director/DirectorReviewsView.vue'), meta: { roles: ['director'], title: '试卷审核' } },
       { path: 'director/data', component: () => import('@/views/director/DirectorDataView.vue'), meta: { roles: ['director'], title: '本组数据' } },
-      { path: 'director/profile', component: () => import('@/views/director/DirectorProfileView.vue'), meta: { roles: ['director'], title: '个人信息' } },
+      { path: 'director/profile', component: () => import('@/views/director/DirectorProfileView.vue'), meta: { roles: ['director'], title: '个人中心' } },
     ],
   },
 ];
@@ -38,27 +50,44 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore();
   if (to.meta.public) {
     return true;
+  }
+
+  if (!authStore.bootstrapped && authStore.token) {
+    await authStore.bootstrap();
   }
 
   if (!authStore.isLoggedIn) {
     return '/login';
   }
 
+  if (to.path === '/') {
+    const lastRoute = localStorage.getItem('exam-workflow-last-route') ?? '';
+    const rolePrefix = rolePrefixMap[authStore.currentRole];
+    if (lastRoute && rolePrefix && lastRoute.startsWith(rolePrefix)) {
+      return lastRoute;
+    }
+    return fallbackMap[authStore.currentRole];
+  }
+
   const roles = (to.meta.roles as string[] | undefined) ?? [];
   if (roles.length && !roles.includes(authStore.currentRole)) {
-    const fallbackMap: Record<string, string> = {
-      admin: '/admin/dashboard',
-      director: '/director/dashboard',
-      teacher: '/teacher/courses',
-    };
     return fallbackMap[authStore.currentRole];
   }
 
   return true;
+});
+
+router.afterEach((to) => {
+  const pageTitle = (to.meta.title as string | undefined) ?? (to.meta.public ? '登录' : '试卷工作流系统');
+  document.title = `${pageTitle} - 试卷工作流系统`;
+
+  if (!to.meta.public) {
+    localStorage.setItem('exam-workflow-last-route', to.fullPath);
+  }
 });
 
 export default router;

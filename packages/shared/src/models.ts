@@ -24,8 +24,6 @@ export interface SemesterSummary {
   id: string;
   name: string;
   code: string;
-  startDate: string;
-  endDate: string;
   isCurrent: boolean;
   status: boolean;
 }
@@ -127,15 +125,62 @@ export interface DashboardStats {
   pendingCount: number;
   approvedCount: number;
   rejectedCount: number;
+  totalUsers: number;
+  totalTeachers: number;
+  totalDirectors: number;
+  totalDepartments: number;
   totalCourses: number;
   totalPapers: number;
+  currentSemesterName?: string | null;
+  recentLoginUsers: Array<{
+    userId?: string | null;
+    userName: string;
+    departmentName?: string | null;
+    loginAt: string;
+    ipAddress?: string | null;
+  }>;
+  loginHourlyDistribution: Array<{
+    hour: string;
+    value: number;
+  }>;
+  loginTrend: Array<{
+    date: string;
+    value: number;
+  }>;
+  paperSubmissionTrend: Array<{
+    date: string;
+    value: number;
+  }>;
+  reviewTrend: Array<{
+    date: string;
+    approved: number;
+    rejected: number;
+  }>;
+  courseTypeDistribution: Array<{
+    name: string;
+    value: number;
+  }>;
+  teacherPaperRanking: Array<{
+    teacherId: string;
+    teacherName: string;
+    departmentName?: string | null;
+    submitted: number;
+    approved: number;
+    rejected: number;
+    pending: number;
+  }>;
   departmentProgress: Array<{
     departmentId: string;
     departmentName: string;
+    teacherCount: number;
+    onlineTeachers: number;
+    courseCount: number;
     total: number;
     approved: number;
     pending: number;
     rejected: number;
+    approvalRate: number;
+    reviewedRate: number;
     progress: number;
   }>;
   paperStatusDistribution: Array<{

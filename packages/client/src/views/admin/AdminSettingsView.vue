@@ -19,8 +19,8 @@ onMounted(loadData);
 </script>
 
 <template>
-  <PageCard title="系统设置" eyebrow="Settings">
-    <el-table :data="settings">
+  <PageCard title="系统设置" eyebrow="参数设置">
+      <el-table border :data="settings">
       <el-table-column prop="key" label="键" width="180" />
       <el-table-column prop="description" label="说明" width="180" />
       <el-table-column label="值">

@@ -20,7 +20,7 @@ async function submitPassword() {
 
 <template>
   <div class="split-grid">
-    <PageCard title="个人信息" eyebrow="Profile">
+    <PageCard fill show-title title="个人信息" eyebrow="账号信息">
       <el-descriptions :column="1" border>
         <el-descriptions-item label="姓名">{{ authStore.user?.realName }}</el-descriptions-item>
         <el-descriptions-item label="用户名">{{ authStore.user?.username }}</el-descriptions-item>
@@ -29,7 +29,7 @@ async function submitPassword() {
       </el-descriptions>
     </PageCard>
 
-    <PageCard title="修改密码" eyebrow="Security">
+    <PageCard fill show-title title="修改密码" eyebrow="安全设置">
       <el-form label-position="top">
         <el-form-item label="原密码"><el-input v-model="passwordForm.oldPassword" type="password" show-password /></el-form-item>
         <el-form-item label="新密码"><el-input v-model="passwordForm.newPassword" type="password" show-password /></el-form-item>

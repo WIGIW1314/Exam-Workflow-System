@@ -75,7 +75,7 @@ export function registerSocketHandlers(io: Server<ClientToServerEvents, ServerTo
       });
 
       socket.on('disconnect', async () => {
-        await onlineManager.disconnect(payload.userId);
+        await onlineManager.disconnect(payload.userId, socket.id);
       });
     } catch {
       socket.disconnect();

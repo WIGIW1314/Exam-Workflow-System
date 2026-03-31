@@ -81,15 +81,11 @@ async function main() {
     update: {
       name: '2025-2026 第二学期',
       isCurrent: true,
-      startDate: new Date('2026-02-16'),
-      endDate: new Date('2026-07-10'),
     },
     create: {
       code: '2025-2026-2',
       name: '2025-2026 第二学期',
       isCurrent: true,
-      startDate: new Date('2026-02-16'),
-      endDate: new Date('2026-07-10'),
     },
   });
 

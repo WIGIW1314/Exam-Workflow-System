@@ -17,5 +17,5 @@ const label = computed(() => {
 </script>
 
 <template>
-  <el-tag :type="tagType" effect="dark">{{ label }}</el-tag>
+  <el-tag :type="tagType" effect="light">{{ label }}</el-tag>
 </template>

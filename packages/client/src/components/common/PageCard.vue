@@ -1,7 +1,7 @@
 <template>
-  <section class="page-card">
-    <div class="page-card__header" v-if="$slots.header || title">
-      <div>
+  <section class="page-card" :class="{ 'page-card--fill': fill }">
+    <div class="page-card__header" v-if="($slots.header || title) && showTitle || $slots.actions">
+      <div v-if="showTitle && ($slots.header || title)">
         <div class="page-card__eyebrow" v-if="eyebrow">{{ eyebrow }}</div>
         <h3>{{ title }}</h3>
       </div>
@@ -19,5 +19,7 @@
 defineProps<{
   title?: string;
   eyebrow?: string;
+  showTitle?: boolean;
+  fill?: boolean;
 }>();
 </script>

@@ -244,8 +244,6 @@ CREATE TABLE Semester (
   id         TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
   name       TEXT NOT NULL UNIQUE,   -- 如 "2025-2026 第一学期"
   code       TEXT NOT NULL UNIQUE,   -- 如 "2025-2026-1"
-  startDate  DATE NOT NULL,
-  endDate    DATE NOT NULL,
   isCurrent  INTEGER DEFAULT 0,      -- 是否当前学期
   status     INTEGER DEFAULT 1,      -- 1-启用 0-归档
   createdAt  DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -677,15 +675,14 @@ class DocxService {
 | 页面 | 路由 | 核心功能 |
 |------|------|----------|
 | **仪表盘** | `/admin/dashboard` | 在线用户列表、试卷状态分布图、教研室进度、本学期统计 |
-| **用户管理** | `/admin/users` | CRUD、分配角色、启用/禁用、重置密码、批量导入 |
+| **用户管理** | `/admin/users` | CRUD、分配角色、启用/禁用、重置密码、模板下载、批量导入/导出/删除 |
 | **角色管理** | `/admin/roles` | CRUD、权限分配 |
 | **权限管理** | `/admin/permissions` | 权限列表查看（一般由种子数据预置） |
-| **学期管理** | `/admin/semesters` | CRUD、设置当前学期、归档历史学期 |
-| **教研室管理** | `/admin/departments` | CRUD、指定教研室主任、成员管理 |
-| **课程管理** | `/admin/courses` | Excel 导入/导出、手动 CRUD、按学期筛选 |
-| **流程设计** | `/admin/workflow` | 编号规则配置、审批流参数设置 |
+| **学期管理** | `/admin/semesters` | CRUD、设置当前学期、模板下载、批量导入/导出/删除 |
+| **教研室管理** | `/admin/departments` | CRUD、指定教研室主任、成员管理、模板下载、批量导入/导出/删除 |
+| **课程管理** | `/admin/courses` | Excel 模板下载、批量导入/导出/删除、手动 CRUD、按学期筛选 |
 | **试卷总览** | `/admin/papers` | 查看全部试卷状态、筛选、导出 |
-| **审计日志** | `/admin/audit-logs` | 查看全部操作日志、筛选、导出 |
+| **审计日志** | `/admin/audit-logs` | 查看全部操作日志、筛选、模板下载、批量导入/导出/删除 |
 | **系统设置** | `/admin/settings` | 系统参数配置 |
 
 #### 仪表盘设计
@@ -827,17 +824,22 @@ interface PaginatedResponse<T> extends ApiResponse {
 | POST   | `/users/:id/roles` | 分配角色 | admin |
 | POST   | `/users/:id/reset-password` | 重置密码 | admin |
 | POST   | `/users/batch-import` | 批量导入用户 | admin |
+| POST   | `/users/batch-delete` | 批量删除用户 | admin |
 
 #### 学期/教研室/课程
 
 | 方法 | 路径 | 描述 | 权限 |
 |------|------|------|------|
 | GET/POST/PUT/DELETE | `/semesters/*` | 学期 CRUD | admin |
+| POST | `/semesters/import` | 批量导入学期 | admin |
+| POST | `/semesters/batch-delete` | 批量删除学期 | admin |
 | PUT | `/semesters/:id/set-current` | 设为当前学期 | admin |
 | GET/POST/PUT/DELETE | `/departments/*` | 教研室 CRUD | admin |
+| POST | `/departments/import` | 批量导入教研室 | admin |
+| POST | `/departments/batch-delete` | 批量删除教研室 | admin |
 | GET/POST/PUT/DELETE | `/courses/*` | 课程 CRUD | admin |
 | POST | `/courses/import` | Excel 导入课程 | admin |
-| GET | `/courses/export` | 导出课程数据 | admin |
+| POST | `/courses/batch-delete` | 批量删除课程 | admin |
 | GET | `/courses/my` | 教师查看我的课程 | teacher |
 
 #### 试卷工作流
@@ -876,6 +878,8 @@ interface PaginatedResponse<T> extends ApiResponse {
 | 方法 | 路径 | 描述 | 权限 |
 |------|------|------|------|
 | GET | `/audit-logs` | 查询审计日志（分页、筛选） | admin |
+| POST | `/audit-logs/import` | 导入审计日志 | admin |
+| POST | `/audit-logs/batch-delete` | 批量删除审计日志 | admin |
 
 #### 在线状态
 

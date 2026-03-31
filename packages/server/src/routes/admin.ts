@@ -18,6 +18,15 @@ const router = Router();
 
 router.use(requireAuth);
 
+function parseEnabledFlag(value: unknown, fallback = true) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    return ['1', 'true', 'yes', '启用', '是'].includes(value.trim().toLowerCase()) || value.trim() === '启用' || value.trim() === '是';
+  }
+  return fallback;
+}
+
 router.get('/lookups', async (_req, res, next) => {
   try {
     const [roles, users, departments, semesters] = await Promise.all([
@@ -27,7 +36,7 @@ router.get('/lookups', async (_req, res, next) => {
         orderBy: { realName: 'asc' },
       }),
       prisma.department.findMany({ orderBy: { sortOrder: 'asc' } }),
-      prisma.semester.findMany({ orderBy: { startDate: 'desc' } }),
+      prisma.semester.findMany({ orderBy: { createdAt: 'desc' } }),
     ]);
     ok(res, {
       roles,
@@ -184,8 +193,11 @@ router.post('/users/batch-import', requireRole('admin'), async (req, res, next) 
         z.object({
           username: z.string(),
           realName: z.string(),
-          roleCodes: z.array(z.string()).min(1),
+          email: z.string().optional().nullable(),
+          phone: z.string().optional().nullable(),
+          status: z.union([z.boolean(), z.string(), z.number()]).optional(),
           departmentId: z.string().optional().nullable(),
+          roleCodes: z.array(z.string()).min(1),
         }),
       )
       .parse(req.body.rows ?? []);
@@ -195,12 +207,18 @@ router.post('/users/batch-import', requireRole('admin'), async (req, res, next) 
         where: { username: row.username },
         update: {
           realName: row.realName,
+          email: row.email,
+          phone: row.phone,
           departmentId: row.departmentId,
+          status: parseEnabledFlag(row.status, true),
         },
         create: {
           username: row.username,
           realName: row.realName,
+          email: row.email,
+          phone: row.phone,
           departmentId: row.departmentId,
+          status: parseEnabledFlag(row.status, true),
           password: await bcrypt.hash(DEFAULT_PASSWORD, 12),
         },
       });
@@ -210,6 +228,17 @@ router.post('/users/batch-import', requireRole('admin'), async (req, res, next) 
       });
     }
     ok(res, null, `成功导入 ${rows.length} 个用户`);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/users/batch-delete', requireRole('admin'), requirePermission('user:delete'), async (req, res, next) => {
+  try {
+    const ids = z.array(z.string()).min(1).parse(req.body.ids ?? []);
+    await prisma.user.deleteMany({ where: { id: { in: ids } } });
+    await recordAudit(req, 'user:batch-delete', 'users', { count: ids.length });
+    ok(res, null, `成功删除 ${ids.length} 个用户`);
   } catch (error) {
     next(error);
   }
@@ -260,9 +289,23 @@ router.get('/permissions', requireRole('admin'), async (_req, res, next) => {
   }
 });
 
-router.get('/semesters', requireRole('admin'), async (_req, res, next) => {
+router.get('/semesters', requireRole('admin'), async (req, res, next) => {
   try {
-    ok(res, await prisma.semester.findMany({ orderBy: { startDate: 'desc' } }));
+    const { page, pageSize, skip } = getPagination(req.query);
+    const keyword = String(req.query.keyword ?? '');
+    const where = keyword
+      ? {
+          OR: [
+            { name: { contains: keyword } },
+            { code: { contains: keyword } },
+          ],
+        }
+      : {};
+    const [list, total] = await Promise.all([
+      prisma.semester.findMany({ where, skip, take: pageSize, orderBy: { createdAt: 'desc' } }),
+      prisma.semester.count({ where }),
+    ]);
+    paginated(res, list, total, page, pageSize);
   } catch (error) {
     next(error);
   }
@@ -274,8 +317,6 @@ router.post('/semesters', requireRole('admin'), async (req, res, next) => {
       .object({
         name: z.string(),
         code: z.string(),
-        startDate: z.string(),
-        endDate: z.string(),
         isCurrent: z.boolean().default(false),
         status: z.boolean().default(true),
       })
@@ -284,7 +325,7 @@ router.post('/semesters', requireRole('admin'), async (req, res, next) => {
       await prisma.semester.updateMany({ data: { isCurrent: false } });
     }
     const semester = await prisma.semester.create({
-      data: { ...body, startDate: new Date(body.startDate), endDate: new Date(body.endDate) },
+      data: body,
     });
     ok(res, semester, '学期创建成功');
   } catch (error) {
@@ -299,8 +340,6 @@ router.put('/semesters/:id', requireRole('admin'), async (req, res, next) => {
       .object({
         name: z.string(),
         code: z.string(),
-        startDate: z.string(),
-        endDate: z.string(),
         isCurrent: z.boolean().default(false),
         status: z.boolean().default(true),
       })
@@ -310,9 +349,61 @@ router.put('/semesters/:id', requireRole('admin'), async (req, res, next) => {
     }
     const semester = await prisma.semester.update({
       where: { id: semesterId },
-      data: { ...body, startDate: new Date(body.startDate), endDate: new Date(body.endDate) },
+      data: body,
     });
     ok(res, semester, '学期更新成功');
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/semesters/import', requireRole('admin'), async (req, res, next) => {
+  try {
+    const rows = z
+      .array(
+        z.object({
+          name: z.string(),
+          code: z.string(),
+          isCurrent: z.union([z.boolean(), z.string(), z.number()]).optional(),
+          status: z.union([z.boolean(), z.string(), z.number()]).optional(),
+        }),
+      )
+      .parse(req.body.rows ?? []);
+    let hasCurrent = false;
+    for (const row of rows) {
+      const isCurrent = parseEnabledFlag(row.isCurrent, false);
+      if (isCurrent && !hasCurrent) {
+        await prisma.semester.updateMany({ data: { isCurrent: false } });
+        hasCurrent = true;
+      }
+      await prisma.semester.upsert({
+        where: { code: row.code },
+        update: {
+          name: row.name,
+          isCurrent,
+          status: parseEnabledFlag(row.status, true),
+        },
+        create: {
+          name: row.name,
+          code: row.code,
+          isCurrent,
+          status: parseEnabledFlag(row.status, true),
+        },
+      });
+    }
+    await recordAudit(req, 'semester:import', 'semester', { count: rows.length });
+    ok(res, null, `成功导入 ${rows.length} 个学期`);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/semesters/batch-delete', requireRole('admin'), async (req, res, next) => {
+  try {
+    const ids = z.array(z.string()).min(1).parse(req.body.ids ?? []);
+    await prisma.semester.deleteMany({ where: { id: { in: ids } } });
+    await recordAudit(req, 'semester:batch-delete', 'semester', { count: ids.length });
+    ok(res, null, `成功删除 ${ids.length} 个学期`);
   } catch (error) {
     next(error);
   }
@@ -338,19 +429,39 @@ router.put('/semesters/:id/set-current', requireRole('admin'), async (req, res, 
   }
 });
 
-router.get('/departments', requireRole('admin'), async (_req, res, next) => {
+router.get('/departments', requireRole('admin'), async (req, res, next) => {
   try {
-    const departments = await prisma.department.findMany({
-      include: { director: true, members: true },
-      orderBy: { sortOrder: 'asc' },
-    });
-    ok(
+    const { page, pageSize, skip } = getPagination(req.query);
+    const keyword = String(req.query.keyword ?? '');
+    const where = keyword
+      ? {
+          OR: [
+            { name: { contains: keyword } },
+            { code: { contains: keyword } },
+            { description: { contains: keyword } },
+          ],
+        }
+      : {};
+    const [departments, total] = await Promise.all([
+      prisma.department.findMany({
+        where,
+        skip,
+        take: pageSize,
+        include: { director: true, members: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      prisma.department.count({ where }),
+    ]);
+    paginated(
       res,
       departments.map((item) => ({
         ...item,
         directorName: item.director?.realName ?? null,
         memberCount: item.members.length,
       })),
+      total,
+      page,
+      pageSize,
     );
   } catch (error) {
     next(error);
@@ -403,6 +514,58 @@ router.delete('/departments/:id', requireRole('admin'), async (req, res, next) =
   try {
     await prisma.department.delete({ where: { id: String(req.params.id) } });
     ok(res, null, '教研室删除成功');
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/departments/import', requireRole('admin'), async (req, res, next) => {
+  try {
+    const rows = z
+      .array(
+        z.object({
+          name: z.string(),
+          code: z.string(),
+          directorId: z.string().optional().nullable(),
+          description: z.string().optional().nullable(),
+          sortOrder: z.number().optional(),
+          status: z.union([z.boolean(), z.string(), z.number()]).optional(),
+        }),
+      )
+      .parse(req.body.rows ?? []);
+    for (const row of rows) {
+      await prisma.department.upsert({
+        where: { code: row.code },
+        update: {
+          name: row.name,
+          directorId: row.directorId,
+          description: row.description,
+          sortOrder: row.sortOrder ?? 0,
+          status: parseEnabledFlag(row.status, true),
+        },
+        create: {
+          name: row.name,
+          code: row.code,
+          directorId: row.directorId,
+          description: row.description,
+          sortOrder: row.sortOrder ?? 0,
+          status: parseEnabledFlag(row.status, true),
+        },
+      });
+    }
+    await recordAudit(req, 'department:import', 'department', { count: rows.length });
+    ok(res, null, `成功导入 ${rows.length} 个教研室`);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/departments/batch-delete', requireRole('admin'), async (req, res, next) => {
+  try {
+    const ids = z.array(z.string()).min(1).parse(req.body.ids ?? []);
+    await prisma.department.deleteMany({ where: { id: { in: ids } } });
+    await recordAudit(req, 'department:batch-delete', 'department', { count: ids.length });
+    ok(res, null, `成功删除 ${ids.length} 个教研室`);
   } catch (error) {
     next(error);
   }
@@ -515,6 +678,17 @@ router.delete('/courses/:id', requireRole('admin'), async (req, res, next) => {
   }
 });
 
+router.post('/courses/batch-delete', requireRole('admin'), async (req, res, next) => {
+  try {
+    const ids = z.array(z.string()).min(1).parse(req.body.ids ?? []);
+    await prisma.course.deleteMany({ where: { id: { in: ids } } });
+    await recordAudit(req, 'course:batch-delete', 'course', { count: ids.length });
+    ok(res, null, `成功删除 ${ids.length} 条课程`);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/courses/import', requireRole('admin'), async (req, res, next) => {
   try {
     const rows = z
@@ -532,8 +706,34 @@ router.post('/courses/import', requireRole('admin'), async (req, res, next) => {
       )
       .parse(req.body.rows ?? []);
     for (const row of rows) {
-      await prisma.course.create({
-        data: {
+      const existed = await prisma.course.findFirst({
+        where: {
+          semesterId: row.semesterId,
+          courseCode: row.courseCode,
+          teacherId: row.teacherId,
+        },
+      });
+      if (existed) {
+        await prisma.courseClass.deleteMany({ where: { courseId: existed.id } });
+      }
+      await prisma.course.upsert({
+        where: existed
+          ? { id: existed.id }
+          : {
+              semesterId_courseCode_teacherId: {
+                semesterId: row.semesterId,
+                courseCode: row.courseCode,
+                teacherId: row.teacherId,
+              },
+            },
+        update: {
+          courseName: row.courseName,
+          departmentId: row.departmentId,
+          creditHours: row.creditHours,
+          courseType: row.courseType,
+          classes: { create: row.classNames.map((className) => ({ className })) },
+        },
+        create: {
           semesterId: row.semesterId,
           courseCode: row.courseCode,
           courseName: row.courseName,

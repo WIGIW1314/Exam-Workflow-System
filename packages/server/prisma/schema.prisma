@@ -76,8 +76,6 @@ model Semester {
   id          String       @id @default(cuid())
   name        String       @unique
   code        String       @unique
-  startDate   DateTime
-  endDate     DateTime
   isCurrent   Boolean      @default(false)
   status      Boolean      @default(true)
   createdAt   DateTime     @default(now())

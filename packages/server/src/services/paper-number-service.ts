@@ -1,5 +1,5 @@
-import dayjs from 'dayjs';
 import { prisma } from '../lib/prisma.js';
+import { toAppTime } from '../utils/datetime.js';
 import { AppError } from '../utils/errors.js';
 
 export async function generatePaperNumber(semesterId: string) {
@@ -10,7 +10,7 @@ export async function generatePaperNumber(semesterId: string) {
     }
 
     const nextSeq = rule.currentSeq + 1;
-    const datePart = dayjs().format(rule.dateFormat);
+    const datePart = toAppTime().format(rule.dateFormat);
     const seqPart = String(nextSeq).padStart(rule.seqLength, '0');
     const paperNumber = `${rule.prefix}${rule.separator}${datePart}${rule.separator}${seqPart}`;
 
