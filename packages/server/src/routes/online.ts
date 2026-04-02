@@ -6,9 +6,9 @@ import { ok } from '../utils/response.js';
 
 const router = Router();
 
-router.get('/users', requireAuth, requireRole('admin', 'director'), async (req, res) => {
+router.get('/users', requireAuth, requireRole('admin', 'director', 'academic_dean'), async (req, res) => {
   const onlineUsers =
-    req.user!.currentRole === 'admin'
+    req.user!.currentRole === 'admin' || req.user!.currentRole === 'academic_dean'
       ? onlineManager.listAll()
       : onlineManager.listByDepartment(req.user!.departmentId ?? '');
   ok(res, {

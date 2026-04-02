@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import PageCard from '@/components/common/PageCard.vue';
 import StatusTag from '@/components/common/StatusTag.vue';
+import WorkflowProgress from '@/components/common/WorkflowProgress.vue';
 import { apiGet } from '@/api';
 import { useAuthStore } from '@/stores/auth';
 import { formatDateTime } from '@/utils/datetime';
@@ -46,6 +47,22 @@ watch(
           <template #default="{ row }">
             <StatusTag :status="row.status" />
           </template>
+        </el-table-column>
+        <el-table-column label="当前进度" min-width="320">
+          <template #default="{ row }">
+            <WorkflowProgress :status="row.status" :rejection-stage="row.rejectionStage" />
+          </template>
+        </el-table-column>
+        <el-table-column label="主模板" width="160">
+          <template #default="{ row }">
+            {{ row.mainReviewTemplateId === 'rationality-review' ? '合理性审核表' : row.mainReviewTemplateId === 'paper-review' ? '试卷命题审查表' : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="主模板状态" width="120">
+          <template #default="{ row }"><StatusTag :status="row.mainReviewStatus || row.status" /></template>
+        </el-table-column>
+        <el-table-column label="分析申请" width="120">
+          <template #default="{ row }">{{ row.analysisReviewCount ?? 0 }} 条</template>
         </el-table-column>
         <el-table-column label="提交时间" width="180">
           <template #default="{ row }">{{ formatDateTime(row.submittedAt) }}</template>

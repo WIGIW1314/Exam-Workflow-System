@@ -28,17 +28,31 @@ const permissions = [
 async function main() {
   const password = await bcrypt.hash(DEFAULT_PASSWORD, 12);
 
-  const [adminRole, directorRole, teacherRole] = await Promise.all(
+  const [adminRole, directorRole, academicDeanRole, teacherRole] = await Promise.all(
     ROLE_CODES.map((code, index) =>
       prisma.role.upsert({
         where: { code },
         update: {
-          name: code === 'admin' ? '管理员' : code === 'director' ? '教研室主任' : '教师',
+          name:
+            code === 'admin'
+              ? '管理员'
+              : code === 'director'
+                ? '教研室主任'
+                : code === 'academic_dean'
+                  ? '教学院长'
+                  : '教师',
           sortOrder: index,
         },
         create: {
           code,
-          name: code === 'admin' ? '管理员' : code === 'director' ? '教研室主任' : '教师',
+          name:
+            code === 'admin'
+              ? '管理员'
+              : code === 'director'
+                ? '教研室主任'
+                : code === 'academic_dean'
+                  ? '教学院长'
+                  : '教师',
           sortOrder: index,
         },
       }),
@@ -59,11 +73,17 @@ async function main() {
   const rolePermissionMap: Record<string, string[]> = {
     admin: permissions.map(([code]) => code),
     director: ['paper:review', 'paper:download', 'stats:view-director'],
+    academic_dean: ['paper:review', 'paper:download', 'stats:view-director'],
     teacher: ['paper:submit', 'paper:download'],
   };
 
   for (const [roleCode, permissionCodes] of Object.entries(rolePermissionMap)) {
-    const role = { admin: adminRole, director: directorRole, teacher: teacherRole }[roleCode];
+    const role = {
+      admin: adminRole,
+      director: directorRole,
+      academic_dean: academicDeanRole,
+      teacher: teacherRole,
+    }[roleCode];
     if (!role) {
       continue;
     }
@@ -162,9 +182,27 @@ async function main() {
     },
   });
 
+  const academicDean = await prisma.user.upsert({
+    where: { username: 'academic_dean' },
+    update: {
+      realName: '王院长',
+      password,
+      email: 'academic_dean@example.com',
+      status: true,
+    },
+    create: {
+      username: 'academic_dean',
+      realName: '王院长',
+      password,
+      email: 'academic_dean@example.com',
+      status: true,
+    },
+  });
+
   const userRoleData = [
     [admin.id, adminRole.id],
     [director.id, directorRole.id],
+    [academicDean.id, academicDeanRole.id],
     [teacher.id, teacherRole.id],
   ];
 
@@ -246,6 +284,7 @@ async function main() {
   console.log('Seed completed.');
   console.log('Admin   -> admin / 123456');
   console.log('Director-> director / 123456');
+  console.log('Dean    -> academic_dean / 123456');
   console.log('Teacher -> teacher / 123456');
 }
 

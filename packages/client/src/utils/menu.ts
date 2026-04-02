@@ -18,16 +18,24 @@ export const menuByRole = {
     { path: '/admin/departments', label: '教研室管理', icon: Collection },
     { path: '/admin/courses', label: '课程管理', icon: Files },
     { path: '/admin/papers', label: '试卷总览', icon: Document },
+    { path: '/admin/docx-templates', label: '模板文档', icon: Files },
     { path: '/admin/audit-logs', label: '审计日志', icon: FolderOpened },
     { path: '/admin/settings', label: '系统设置', icon: Setting },
   ],
   teacher: [
     { path: '/teacher/courses', label: '我的课程', icon: Files },
     { path: '/teacher/papers', label: '试卷提交', icon: Document },
+    { path: '/teacher/docx-templates', label: '模板文档', icon: Files },
   ],
   director: [
     { path: '/director/dashboard', label: '工作台', icon: Histogram },
     { path: '/director/reviews', label: '试卷审核', icon: Document },
     { path: '/director/data', label: '本组数据', icon: Files },
+    { path: '/director/docx-templates', label: '模板文档', icon: Files },
+  ],
+  academic_dean: [
+    { path: '/academic-dean/reviews', label: '教学院长审核', icon: Document },
+    { path: '/academic-dean/data', label: '试卷总览', icon: Files },
+    { path: '/academic-dean/docx-templates', label: '模板文档', icon: Files },
   ],
 } as const;

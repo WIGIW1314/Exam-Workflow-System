@@ -15,6 +15,7 @@ function escapeXml(value: string) {
 
 function buildHeaderXml(paperNumber: string) {
   const text = escapeXml(`试卷编号：${paperNumber}`);
+  const boxTopOffset = 30;
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
   <w:p>
@@ -23,7 +24,7 @@ function buildHeaderXml(paperNumber: string) {
     </w:pPr>
     <w:r>
       <w:pict>
-        <v:rect id="PaperNumberBox" o:spid="_x0000_s1025" strokecolor="#000000" fillcolor="#ffffff" style="position:absolute;margin-left:0;margin-top:0;width:180pt;height:24pt;z-index:251659264;mso-position-horizontal:right;mso-position-horizontal-relative:margin;mso-position-vertical:absolute;mso-position-vertical-relative:page;">
+        <v:rect id="PaperNumberBox" o:spid="_x0000_s1025" strokecolor="#000000" fillcolor="#ffffff" style="position:absolute;margin-left:0;margin-top:${boxTopOffset}pt;width:180pt;height:24pt;z-index:251659264;mso-position-horizontal:right;mso-position-horizontal-relative:margin;mso-position-vertical:absolute;mso-position-vertical-relative:page;">
           <v:textbox inset="3pt,2pt,3pt,2pt">
             <w:txbxContent>
               <w:p>

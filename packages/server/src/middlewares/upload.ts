@@ -14,11 +14,14 @@ const upload = multer({
   },
 });
 
-export const uploadDocx = [
-  upload.single('file'),
-  async (req: Request, _res: Response, next: NextFunction) => {
+function validateUploadedDocx(optional = false) {
+  return async (req: Request, _res: Response, next: NextFunction) => {
     try {
       if (!req.file) {
+        if (optional) {
+          next();
+          return;
+        }
         throw new AppError('请上传 DOCX 文件', 400);
       }
 
@@ -33,5 +36,9 @@ export const uploadDocx = [
     } catch (error) {
       next(error);
     }
-  },
-];
+  };
+}
+
+export const uploadDocx = [upload.single('file'), validateUploadedDocx(false)];
+
+export const uploadOptionalDocx = [upload.single('file'), validateUploadedDocx(true)];

@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { formatIsoOffset, toAppTime } from '../utils/datetime.js';
 
-const PAPER_STATUSES = ['pending', 'approved', 'rejected'] as const;
+const PAPER_STATUSES = ['pending', 'pending_dean', 'approved', 'rejected'] as const;
 
 function buildLastDays(days: number) {
   return Array.from({ length: days }, (_, index) => toAppTime().subtract(days - index - 1, 'day'));
@@ -17,6 +17,7 @@ function buildHourlyBuckets() {
 function toStatusCounts(items: Array<{ status: string }>) {
   const counts = {
     pending: 0,
+    pending_dean: 0,
     approved: 0,
     rejected: 0,
   };
@@ -91,6 +92,7 @@ async function collectBaseStats() {
   const statusCounts = toStatusCounts(papers);
   const teacherUsers = users.filter((user) => user.roles.some((entry) => entry.role.code === 'teacher'));
   const directorUsers = users.filter((user) => user.roles.some((entry) => entry.role.code === 'director'));
+  const academicDeanUsers = users.filter((user) => user.roles.some((entry) => entry.role.code === 'academic_dean'));
 
   const loginHourlyDistribution = buildHourlyBuckets();
   const loginTrendMap = new Map(last7Days.map((date) => [date.format('MM-DD'), 0]));
@@ -142,7 +144,7 @@ async function collectBaseStats() {
         submitted: teacherPapers.length,
         approved: counts.approved,
         rejected: counts.rejected,
-        pending: counts.pending,
+        pending: counts.pending + counts.pending_dean,
       };
     })
     .sort((left, right) => right.submitted - left.submitted || right.approved - left.approved)
@@ -160,7 +162,7 @@ async function collectBaseStats() {
       courseCount: department.courses.length,
       total,
       approved: counts.approved,
-      pending: counts.pending,
+      pending: counts.pending + counts.pending_dean,
       rejected: counts.rejected,
       approvalRate: total ? Math.round((counts.approved / total) * 100) : 0,
       reviewedRate: total ? Math.round((reviewed / total) * 100) : 0,
@@ -174,10 +176,11 @@ async function collectBaseStats() {
     totalUsers: users.length,
     totalTeachers: teacherUsers.length,
     totalDirectors: directorUsers.length,
+    totalAcademicDeans: academicDeanUsers.length,
     totalDepartments: departments.length,
     totalCourses: courses.length,
     totalPapers: papers.length,
-    pendingCount: statusCounts.pending,
+    pendingCount: statusCounts.pending + statusCounts.pending_dean,
     approvedCount: statusCounts.approved,
     rejectedCount: statusCounts.rejected,
     paperStatusDistribution: PAPER_STATUSES.map((status) => ({
@@ -276,7 +279,7 @@ export async function getDirectorStats(userId: string, departmentId?: string | n
   return {
     ...stats,
     onlineCount: currentDepartment?.onlineTeachers ?? 0,
-    pendingCount: departmentStatus.pending,
+    pendingCount: departmentStatus.pending + departmentStatus.pending_dean,
     approvedCount: departmentStatus.approved,
     rejectedCount: departmentStatus.rejected,
     totalCourses: currentDepartment?.courseCount ?? 0,
@@ -290,8 +293,13 @@ export async function getDirectorStats(userId: string, departmentId?: string | n
     departmentProgress: currentDepartment ? [currentDepartment] : [],
     teacherPaperRanking: stats.teacherPaperRanking.filter((item) => item.departmentName === currentDepartment?.departmentName),
     teamMembers,
-    reviewedByCurrentDirector: await prisma.examPaper.count({
-      where: { reviewerId: userId },
+    reviewedByCurrentDirector: await prisma.auditLog.count({
+      where: {
+        userId,
+        action: {
+          in: ['paper:director-approve', 'paper:director-reject', 'paper:approve', 'paper:reject'],
+        },
+      },
     }),
   };
 }

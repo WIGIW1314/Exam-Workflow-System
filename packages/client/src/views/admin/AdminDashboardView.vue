@@ -39,7 +39,8 @@ const chartMap = new Map<string, echarts.ECharts>();
 let resizeObserver: ResizeObserver | null = null;
 
 const statusLabelMap: Record<string, string> = {
-  pending: '待审核',
+  pending: '待教研室主任审核',
+  pending_dean: '待教学院长审核',
   approved: '已通过',
   rejected: '已驳回',
 };
@@ -47,6 +48,7 @@ const statusLabelMap: Record<string, string> = {
 const roleLabelMap: Record<string, string> = {
   admin: '管理员',
   director: '教研室主任',
+  academic_dean: '教学院长',
   teacher: '任课教师',
 };
 
@@ -183,7 +185,7 @@ function renderCharts() {
         radius: ['45%', '72%'],
         center: ['50%', '46%'],
         label: { color: '#303133' },
-        color: ['#e6a23c', '#67c23a', '#f56c6c'],
+        color: ['#e6a23c', '#409eff', '#67c23a', '#f56c6c'],
         data: stats.value.paperStatusDistribution.map((item: any) => ({
           name: statusLabelMap[item.status] ?? item.status,
           value: item.value,
@@ -423,7 +425,7 @@ onBeforeUnmount(() => {
       <div class="metric-card">
         <span>系统用户</span>
         <strong>{{ stats.totalUsers }}</strong>
-        <small>教师 {{ stats.totalTeachers }} / 主任 {{ stats.totalDirectors }}</small>
+        <small>教师 {{ stats.totalTeachers }} / 主任 {{ stats.totalDirectors }} / 院长 {{ stats.totalAcademicDeans }}</small>
       </div>
       <div class="metric-card">
         <span>教研室</span>

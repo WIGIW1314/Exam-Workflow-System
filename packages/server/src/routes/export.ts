@@ -342,7 +342,7 @@ router.get('/audit-logs-template', requireRole('admin'), async (_req, res, next)
   }
 });
 
-router.get('/papers', requireRole('admin', 'director'), async (req, res, next) => {
+router.get('/papers', requireRole('admin', 'director', 'academic_dean'), async (req, res, next) => {
   try {
     const papers = await prisma.examPaper.findMany({
       where: req.user!.currentRole === 'director' ? { departmentId: req.user!.departmentId ?? undefined } : undefined,

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import PageCard from '@/components/common/PageCard.vue';
 import StatusTag from '@/components/common/StatusTag.vue';
+import WorkflowProgress from '@/components/common/WorkflowProgress.vue';
 import { apiGet, downloadFile } from '@/api';
 import { useAuthStore } from '@/stores/auth';
 import { formatDateTime } from '@/utils/datetime';
@@ -53,6 +54,9 @@ watch(
         <el-table-column prop="paperNumber" label="试卷编号" width="180" />
         <el-table-column label="状态" width="120">
           <template #default="{ row }"><StatusTag :status="row.status" /></template>
+        </el-table-column>
+        <el-table-column label="当前进度" min-width="320">
+          <template #default="{ row }"><WorkflowProgress :status="row.status" :rejection-stage="row.rejectionStage" /></template>
         </el-table-column>
         <el-table-column prop="reviewerName" label="审核人" width="120" />
         <el-table-column label="提交时间" width="180">

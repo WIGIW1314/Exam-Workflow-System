@@ -14,6 +14,7 @@
     "@exam-workflow/shared": "workspace:*",
     "axios": "^1.11.0",
     "dayjs": "^1.11.13",
+    "docx-preview": "^0.3.7",
     "echarts": "^5.6.0",
     "element-plus": "^2.11.1",
     "file-saver": "^2.0.5",

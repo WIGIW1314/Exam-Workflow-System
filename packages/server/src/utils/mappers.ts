@@ -1,5 +1,22 @@
 import type { Prisma } from '@prisma/client';
 
+export const paperSummaryInclude = {
+  course: true,
+  semester: true,
+  teacher: true,
+  department: true,
+  reviewer: true,
+  classGroups: { include: { courseClass: true } },
+  templateReviews: {
+    include: {
+      classGroups: { include: { courseClass: true } },
+      directorReviewer: true,
+      deanReviewer: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  },
+} satisfies Prisma.ExamPaperInclude;
+
 export function mapUserSummary(
   user: Prisma.UserGetPayload<{
     include: { roles: { include: { role: true } }; department: true };
@@ -52,16 +69,12 @@ export function mapCourseSummary(
 
 export function mapPaperSummary(
   paper: Prisma.ExamPaperGetPayload<{
-    include: {
-      course: true;
-      semester: true;
-      teacher: true;
-      department: true;
-      reviewer: true;
-      classGroups: { include: { courseClass: true } };
-    };
+    include: typeof paperSummaryInclude;
   }>,
 ) {
+  const mainReview = paper.templateReviews.find((item) => item.workflowType === 'numbering_review') ?? null;
+  const analysisReviews = paper.templateReviews.filter((item) => item.workflowType === 'analysis_review');
+
   return {
     id: paper.id,
     courseId: paper.courseId,
@@ -73,6 +86,7 @@ export function mapPaperSummary(
     teacherName: paper.teacher.realName,
     departmentId: paper.departmentId,
     departmentName: paper.department.name,
+    courseType: paper.course.courseType,
     classGroups: paper.classGroups.map((item) => ({
       id: item.courseClass.id,
       className: item.courseClass.className,
@@ -83,11 +97,39 @@ export function mapPaperSummary(
     paperNumber: paper.paperNumber,
     status: paper.status,
     rejectReason: paper.rejectReason,
+    rejectionStage: paper.rejectionStage,
     reviewerId: paper.reviewerId,
     reviewerName: paper.reviewer?.realName ?? null,
     reviewedAt: paper.reviewedAt?.toISOString() ?? null,
     submittedAt: paper.submittedAt.toISOString(),
     previewHtml: paper.previewHtml,
     fileHash: paper.fileHash,
+    mainReviewTemplateId: mainReview?.templateId ?? null,
+    mainReviewStatus: mainReview?.status ?? null,
+    mainReviewDocumentAvailable: Boolean(mainReview?.approvedFilePath),
+    canStartAnalysisReview: paper.status === 'approved',
+    analysisReviewCount: analysisReviews.length,
+    analysisReviews: analysisReviews.map((review) => ({
+      id: review.id,
+      paperId: review.paperId,
+      workflowType: review.workflowType,
+      templateId: review.templateId,
+      status: review.status,
+      rejectReason: review.rejectReason,
+      rejectionStage: review.rejectionStage,
+      approvedFilePath: review.approvedFilePath,
+      teacherSubmittedAt: review.teacherSubmittedAt?.toISOString() ?? null,
+      directorReviewedAt: review.directorReviewedAt?.toISOString() ?? null,
+      deanReviewedAt: review.deanReviewedAt?.toISOString() ?? null,
+      directorReviewerId: review.directorReviewerId,
+      directorReviewerName: review.directorReviewer?.realName ?? null,
+      deanReviewerId: review.deanReviewerId,
+      deanReviewerName: review.deanReviewer?.realName ?? null,
+      scopeSignature: review.scopeSignature,
+      scopes: review.classGroups.map((item) => ({
+        id: item.courseClass.id,
+        className: item.courseClass.className,
+      })),
+    })),
   };
 }

@@ -15,7 +15,21 @@ export async function getFileHash(filePath: string) {
 
 export async function getPreviewHtml(filePath: string) {
   const buffer = await fs.readFile(filePath);
-  const result = await mammoth.convertToHtml({ buffer });
+  const result = await mammoth.convertToHtml(
+    { buffer },
+    {
+      // Keep intentional blank lines in exam papers for better visual parity.
+      ignoreEmptyParagraphs: false,
+      styleMap: [
+        "p[style-name='标题 1'] => h1:fresh",
+        "p[style-name='标题 2'] => h2:fresh",
+        "p[style-name='标题 3'] => h3:fresh",
+        "p[style-name='Heading 1'] => h1:fresh",
+        "p[style-name='Heading 2'] => h2:fresh",
+        "p[style-name='Heading 3'] => h3:fresh",
+      ],
+    },
+  );
   return result.value;
 }
 

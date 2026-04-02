@@ -11,6 +11,7 @@ const authStore = useAuthStore();
 const roleLabelMap: Record<string, string> = {
   admin: '管理员',
   director: '教研室主任',
+  academic_dean: '教学院长',
   teacher: '任课教师',
 };
 const isCollapse = ref(localStorage.getItem('exam-workflow-sidebar-collapse') === '1');
@@ -29,6 +30,7 @@ const profilePath = computed(() => {
   const profileMap: Record<string, string> = {
     admin: '/admin/profile',
     director: '/director/profile',
+    academic_dean: '/academic-dean/profile',
     teacher: '/teacher/profile',
   };
   return profileMap[authStore.currentRole] ?? '/login';
@@ -44,6 +46,7 @@ async function handleRoleCommand(roleCode: string) {
   const fallbackMap: Record<string, string> = {
     admin: '/admin/dashboard',
     director: '/director/dashboard',
+    academic_dean: '/academic-dean/reviews',
     teacher: '/teacher/courses',
   };
   router.push(fallbackMap[roleCode]);

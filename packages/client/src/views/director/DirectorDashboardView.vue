@@ -6,7 +6,7 @@ import { apiGet } from '@/api';
 import { useAuthStore } from '@/stores/auth';
 import { formatDateTimeShort } from '@/utils/datetime';
 
-type PaperStatus = 'pending' | 'approved' | 'rejected';
+type PaperStatus = 'pending' | 'pending_dean' | 'approved' | 'rejected';
 
 interface StatusDistributionItem {
   status: PaperStatus;
@@ -91,7 +91,8 @@ const chartMap = new Map<string, echarts.ECharts>();
 let resizeObserver: ResizeObserver | null = null;
 
 const statusLabelMap: Record<PaperStatus, string> = {
-  pending: '待审核',
+  pending: '待教研室主任审核',
+  pending_dean: '待教学院长审核',
   approved: '已通过',
   rejected: '已驳回',
 };
@@ -231,7 +232,7 @@ function renderCharts() {
         radius: ['52%', '78%'],
         center: ['50%', '42%'],
         label: { color: '#303133' },
-        color: ['#f59e0b', '#34d399', '#fb7185'],
+        color: ['#f59e0b', '#409eff', '#34d399', '#fb7185'],
         data: stats.value.paperStatusDistribution.map((item) => ({
           name: statusLabelMap[item.status],
           value: item.value,

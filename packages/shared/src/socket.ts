@@ -14,7 +14,12 @@ export interface PaperStatusEvent {
   status: string;
   courseName: string;
   teacherName: string;
+  departmentId?: string;
+  teacherId?: string;
   message: string;
+  workflowType?: string;
+  templateId?: string;
+  reviewId?: string;
 }
 
 export interface NotificationEvent {

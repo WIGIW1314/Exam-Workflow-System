@@ -26,6 +26,8 @@ model User {
   courses          Course[]             @relation("CourseTeacher")
   submittedPapers  ExamPaper[]          @relation("PaperTeacher")
   reviewedPapers   ExamPaper[]          @relation("PaperReviewer")
+  directorTemplateReviews PaperTemplateReview[] @relation("TemplateReviewDirector")
+  deanTemplateReviews     PaperTemplateReview[] @relation("TemplateReviewDean")
   sessions         Session[]
   auditLogs        AuditLog[]
   notifications    Notification[]
@@ -128,6 +130,7 @@ model CourseClass {
   createdAt DateTime          @default(now())
   course    Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
   papers    PaperClassGroup[]
+  templateReviews PaperTemplateReviewClassGroup[]
 }
 
 model ExamPaper {
@@ -145,6 +148,7 @@ model ExamPaper {
   paperNumber       String?           @unique
   status            String            @default("pending")
   rejectReason      String?
+  rejectionStage    String?
   reviewerId        String?
   approvalNote      String?
   reviewedAt        DateTime?
@@ -157,6 +161,7 @@ model ExamPaper {
   department        Department        @relation(fields: [departmentId], references: [id])
   reviewer          User?             @relation("PaperReviewer", fields: [reviewerId], references: [id])
   classGroups       PaperClassGroup[]
+  templateReviews   PaperTemplateReview[]
 
   @@index([status, semesterId, departmentId])
 }
@@ -168,6 +173,43 @@ model PaperClassGroup {
   courseClass   CourseClass @relation(fields: [courseClassId], references: [id], onDelete: Cascade)
 
   @@id([paperId, courseClassId])
+}
+
+model PaperTemplateReview {
+  id                String   @id @default(cuid())
+  paperId            String
+  workflowType       String
+  templateId         String
+  status             String   @default("draft_teacher")
+  scopeSignature     String?
+  formData           String   @default("{}")
+  approvedFilePath   String?
+  rejectReason       String?
+  rejectionStage     String?
+  teacherSubmittedAt DateTime?
+  directorReviewedAt DateTime?
+  deanReviewedAt     DateTime?
+  directorReviewerId String?
+  deanReviewerId     String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  paper              ExamPaper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  directorReviewer   User?     @relation("TemplateReviewDirector", fields: [directorReviewerId], references: [id], onDelete: SetNull)
+  deanReviewer       User?     @relation("TemplateReviewDean", fields: [deanReviewerId], references: [id], onDelete: SetNull)
+  classGroups        PaperTemplateReviewClassGroup[]
+
+  @@unique([paperId, workflowType, scopeSignature])
+  @@index([workflowType, status])
+  @@index([paperId, workflowType])
+}
+
+model PaperTemplateReviewClassGroup {
+  reviewId       String
+  courseClassId  String
+  review         PaperTemplateReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  courseClass    CourseClass         @relation(fields: [courseClassId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, courseClassId])
 }
 
 model NumberRule {

@@ -25,6 +25,7 @@ const form = reactive({
   courseType: '必修',
   classNamesText: '',
 });
+const courseTypeOptions = ['必修', '限选', '选修', '实践', '通识'];
 
 async function loadData() {
   const [courseData, lookupData] = await Promise.all([
@@ -224,7 +225,11 @@ onMounted(loadData);
           <el-select v-model="form.departmentId"><el-option v-for="item in lookups.departments ?? []" :key="item.id" :label="item.name" :value="item.id" /></el-select>
         </el-form-item>
         <el-form-item label="学分"><el-input-number v-model="form.creditHours" :min="0" /></el-form-item>
-        <el-form-item label="课程类型"><el-input v-model="form.courseType" /></el-form-item>
+        <el-form-item label="课程类型">
+          <el-select v-model="form.courseType">
+            <el-option v-for="item in courseTypeOptions" :key="item" :label="item" :value="item" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="班级（用 、 或 , 分隔）" style="grid-column: 1 / -1">
           <el-input v-model="form.classNamesText" type="textarea" :rows="3" />
         </el-form-item>

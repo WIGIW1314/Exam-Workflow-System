@@ -12,7 +12,8 @@ const tagType = computed(() => {
 const label = computed(() => {
   if (props.status === 'approved') return '已通过';
   if (props.status === 'rejected') return '已驳回';
-  return '待审核';
+  if (props.status === 'pending_dean') return '待教学院长审核';
+  return '待教研室主任审核';
 });
 </script>
 

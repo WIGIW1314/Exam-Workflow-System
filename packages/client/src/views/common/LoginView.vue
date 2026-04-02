@@ -62,6 +62,7 @@ async function handleLogin() {
     const targetMap: Record<string, string> = {
       admin: '/admin/dashboard',
       director: '/director/dashboard',
+      academic_dean: '/academic-dean/reviews',
       teacher: '/teacher/courses',
     };
     await router.push(targetMap[authStore.currentRole]);
